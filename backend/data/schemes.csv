@@ -1,0 +1,11 @@
+scheme_name,category,eligibility,benefit,documents,apply_link
+
+PM-KISAN,Agriculture,Farmer owning cultivable land,₹6000 per year,"Aadhaar;Bank Passbook;Land Record",https://pmkisan.gov.in
+
+Ayushman Bharat,Health,Low income families,₹5 lakh health insurance,"Aadhaar;Ration Card",https://pmjay.gov.in
+
+PMAY,Housing,EWS/LIG households,Housing assistance,"Aadhaar;Income Certificate",https://pmaymis.gov.in
+
+Ujjwala Yojana,Women,BPL women,Free LPG connection,"Aadhaar;Ration Card",https://pmuy.gov.in
+
+MGNREGA,Employment,Rural households,100 days employment,"Aadhaar;Job Card",https://nrega.nic.in
