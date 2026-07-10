@@ -4,7 +4,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 
 from backend.services.gemini_service import (
-    generate_answer
+    generate_answer,
+    normalize_query
 )
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -31,8 +32,12 @@ retriever = db.as_retriever(
 
 def ask_rag(question: str):
 
-    docs = retriever.invoke(
+    normalized_question = normalize_query(
         question
+    )
+    
+    docs = retriever.invoke(
+        normalized_question
     )
 
     context = "\n\n".join(
@@ -67,13 +72,26 @@ available.
 7. Mention application process if
 available.
 
+8. Generate answers in user's language whis is used in the query.
+The query may be:
+- English
+- Hindi
+- Hinglish
+- Mixed Hindi and English
+
+if the query is in Hindi then only answer in Hindi.
+if the query is in Hinglish then only answer in Hinglish.
+if the query is in hindi and written in english aplphabet then only answer in Hindi but written in english alphabet.
+
+query: {question}
+
 Context:
 
 {context}
 
 Question:
 
-{question}
+{normalized_question}
 """
 
     answer = generate_answer(
