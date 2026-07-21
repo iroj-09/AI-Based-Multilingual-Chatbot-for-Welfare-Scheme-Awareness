@@ -103,3 +103,11 @@ tmp/
 # ==========================================
 
 .render/
+
+
+
+# Node
+frontend/node_modules/
+
+# Vite
+frontend/dist/
