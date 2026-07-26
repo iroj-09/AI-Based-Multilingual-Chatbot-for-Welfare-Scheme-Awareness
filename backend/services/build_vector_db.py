@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import Chroma
 
 
@@ -15,7 +15,7 @@ from langchain_community.vectorstores import Chroma
 JSONL_PATH = Path("./backend/data/cleaned_schemes.jsonl")
 VECTOR_DB_PATH = "./vector_db"
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+EMBEDDING_MODEL = "models/embedding-001"
 
 
 # =====================================================
@@ -109,8 +109,8 @@ def build_vector_database():
 
     print("\nLoading embedding model...")
 
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL
+    embeddings = GoogleGenerativeAIEmbeddings(
+        model=EMBEDDING_MODEL
     )
 
     print("\nCreating ChromaDB...")

@@ -5,11 +5,6 @@ langchain-community
 langchain-google-genai
 langchain-huggingface
 chromadb
-sentence-transformers
-transformers
-torch
 python-dotenv
-faiss-cpu
-twilio
 pandas
 scikit-learn
