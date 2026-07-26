@@ -5,6 +5,7 @@ const api = axios.create({
 });
 
 export async function sendMessage(query) {
+  console.log("Sending message to API:", process.env.REACT_APP_API_URL);
   const response = await api.post("/chat", {
     question: query,
   });
