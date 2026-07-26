@@ -3,7 +3,7 @@ from pathlib import Path
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 
-from backend.services.gemini_service import (
+from services.gemini_service import (
     generate_answer,
     normalize_query
 )
