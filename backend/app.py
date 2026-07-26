@@ -8,6 +8,7 @@ app = FastAPI(title="AI Welfare Scheme Assistant")
 
 origins = [
     "http://localhost:5173",
+    "https://ai-based-multilingual-chatbot-for-w-seven.vercel.app/"
 ]
 
 app.add_middleware(
