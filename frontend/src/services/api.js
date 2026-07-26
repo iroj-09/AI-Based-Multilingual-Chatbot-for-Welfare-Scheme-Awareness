@@ -1,11 +1,10 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:8000",
 });
 
 export async function sendMessage(query) {
-  console.log("Sending message to API:", process.env.REACT_APP_API_URL);
   const response = await api.post("/chat", {
     question: query,
   });
@@ -14,4 +13,3 @@ export async function sendMessage(query) {
 }
 
 export default api;
-
