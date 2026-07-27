@@ -1,8 +1,9 @@
 import axios from "axios";
 
+console.log("API URL:", import.meta.env.VITE_API_URL);
 
 const api = axios.create({
-  baseURL: "https://ai-based-multilingual-chatbot-for-welfare-scheme-production.up.railway.app/",
+  baseURL: import.meta.env.VITE_API_URL,
 });
 
 export async function sendMessage(query) {
