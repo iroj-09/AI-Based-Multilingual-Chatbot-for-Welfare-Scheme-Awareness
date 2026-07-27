@@ -11,6 +11,7 @@ origins = [
     "https://ai-based-multilingual-chatbot-for-w-seven.vercel.app/",
     "https://ai-based-multilingual-chatbot-for-welfare-scheme-ho7t9adbe.vercel.app/",
     "https://ai-based-multilingual-chatbot-for-w-henna.vercel.app/",
+    "https://ai-based-multilingual-chatbot-for-welfare-scheme-hyaj3yx35.vercel.app/"
     
 ]
 
