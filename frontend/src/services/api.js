@@ -8,6 +8,7 @@ const api = axios.create({
 
 export async function sendMessage(query) {
   console.log("Base URL:", api.defaults.baseURL);
+  console.log("Full URL:", api.getUri({ url: "/chat" }));
 
   const response = await api.post("/chat", {
     question: query,
