@@ -12,7 +12,7 @@ from langchain_community.vectorstores import Chroma
 # CONFIG
 # =====================================================
 
-JSONL_PATH = Path("./backend/data/cleaned_schemes.jsonl")
+JSONL_PATH = Path("./data/cleaned_schemes.jsonl")
 VECTOR_DB_PATH = "./vector_db"
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"

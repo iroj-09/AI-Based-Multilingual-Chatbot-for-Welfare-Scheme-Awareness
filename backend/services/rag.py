@@ -8,9 +8,9 @@ from .gemini_service import (
     normalize_query
 )
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-VECTOR_DB_PATH = BASE_DIR / "vector_db"
+
+VECTOR_DB_PATH = "./vector_db"
 
 embeddings = HuggingFaceEmbeddings(
     model_name="sentence-transformers/all-MiniLM-L6-v2"
