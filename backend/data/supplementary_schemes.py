@@ -181,6 +181,73 @@ SCHEMES = [
             "4. Passport-size photographs."
         ),
     },
+    {
+        "scheme_id": "supp-mgnrega",
+        "scheme_name": "Mahatma Gandhi National Rural Employment Guarantee Scheme (MGNREGS)",
+        "short_title": "MGNREGA / NREGA",
+        "categories": ["Skills & Employment", "Agriculture,Rural & Environment"],
+        "tags": ["Employment", "Rural", "Wages", "Job Card", "NREGA", "100 days"],
+        "description": (
+            "MGNREGS guarantees up to 100 days of wage employment in a financial year to every rural "
+            "household whose adult members volunteer to do unskilled manual work."
+        ),
+        "benefits": (
+            "1. Up to 100 days of guaranteed wage employment per rural household in a financial year.\n"
+            "2. Wages are paid at the rate notified by the State and are paid into the worker's bank or post office account.\n"
+            "3. Work is to be provided within about 5 km of the applicant's village.\n"
+            "4. If work is not provided within 15 days of the demand, an unemployment allowance is payable."
+        ),
+        "eligibility": (
+            "1. The applicant must be an adult member of a rural household.\n"
+            "2. The applicant must be willing to do unskilled manual work.\n"
+            "3. The household must be registered with the Gram Panchayat and hold a Job Card."
+        ),
+        "application_process": (
+            "1. Apply to the Gram Panchayat for a Job Card. Registration is free.\n"
+            "2. The Job Card is issued after verification, normally within 15 days.\n"
+            "3. Submit a written or oral application to the Gram Panchayat for work, stating the period for which work is needed.\n"
+            "4. Details are available at https://nrega.nic.in."
+        ),
+        "documents_required": (
+            "1. Application for registration to the Gram Panchayat.\n"
+            "2. Passport-size photograph.\n"
+            "3. Identity proof such as Aadhaar, as required by the State.\n"
+            "4. Bank or post office account details."
+        ),
+    },
+    {
+        "scheme_id": "supp-eshram",
+        "scheme_name": "e-Shram Registration for Unorganised Workers",
+        "short_title": "e-Shram",
+        "categories": ["Skills & Employment", "Social welfare & Empowerment"],
+        "tags": ["Unorganised Workers", "Gig Workers", "Labour", "e-Shram", "UAN", "Accident Insurance"],
+        "description": (
+            "e-Shram is the national database of unorganised workers, including gig and platform workers. "
+            "Registered workers receive an e-Shram card with a Universal Account Number (UAN)."
+        ),
+        "benefits": (
+            "1. An e-Shram card with a 12-digit Universal Account Number (UAN).\n"
+            "2. Accidental insurance cover under the Pradhan Mantri Suraksha Bima Yojana for registered workers, "
+            "with the premium paid by the Government for the first year.\n"
+            "3. Easier access to present and future social security schemes for unorganised workers."
+        ),
+        "eligibility": (
+            "1. The applicant must be an unorganised worker aged between 16 and 59 years.\n"
+            "2. The applicant must not be a member of EPFO or ESIC.\n"
+            "3. The applicant must not be an income tax payer.\n"
+            "4. Gig and platform workers can register."
+        ),
+        "application_process": (
+            "1. Register free of cost at https://eshram.gov.in or through the nearest Common Service Centre or post office.\n"
+            "2. Aadhaar-linked mobile number is needed for OTP verification.\n"
+            "3. After registration the e-Shram card can be downloaded."
+        ),
+        "documents_required": (
+            "1. Aadhaar card.\n"
+            "2. Mobile number linked with Aadhaar.\n"
+            "3. Bank account details."
+        ),
+    },
 ]
 
 

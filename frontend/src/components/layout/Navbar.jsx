@@ -24,13 +24,6 @@ export default function Navbar() {
           >
             Chat
           </Link>
-
-          <Link
-            to="/eligibility"
-            className="font-medium text-gray-700 transition hover:text-teal-700"
-          >
-            Eligibility
-          </Link>
         </div>
 
         {/* CTA */}

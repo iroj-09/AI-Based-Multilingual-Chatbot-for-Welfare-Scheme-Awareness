@@ -223,64 +223,42 @@ The chatbot can answer questions like:
 
 # 📡 API
 
-## Chat Endpoint
+The server keeps no sessions. Every reply returns a `state` object, and the client sends it back with the next message.
 
-```http
-POST /chat
-```
+## `POST /chat/start`
+Opening message (language choice). No LLM call.
 
-### Request
-
-```json
-{
-    "question": "What documents do I need?",
-    "history": [
-        {"role": "user", "content": "Tell me about PM-KISAN"},
-        {"role": "assistant", "content": "PM-KISAN is a Central Sector Scheme..."}
-    ]
-}
-```
-
-`history` is optional; it lets the bot resolve follow-up questions.
-
-### Response
+## `POST /chat`
 
 ```json
-{
-    "answer": "PM-KISAN is a Central Sector Scheme...",
-    "sources": [{"scheme_name": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)", "state": "", "level": "Central"}]
-}
-```
-
-`/chat` is rate limited per IP (see `backend/config.py`).
-
-### Rebuilding the vector DB and running tests
-
-```bash
-cd backend
-python services/build_vector_db.py        # re-chunks and re-embeds data/cleaned_schemes.jsonl
-pip install -r requirements-dev.txt
-cd .. && python -m pytest tests -c tests/pytest.ini
-```
-
-Set `ALLOWED_ORIGINS` (comma-separated) to allow extra frontend origins without editing code.
-
-## Eligibility Endpoint
-
-```http
-POST /eligibility
+{ "message": "मुझे मुफ्त गैस कनेक्शन चाहिए", "state": { "...": "state from the previous reply" } }
 ```
 
 ```json
 {
-    "age": 35,
-    "gender": "Female",
-    "occupation": "Farmer",
-    "income": 200000
+  "reply": "...",
+  "state": { "...": "send this back next time" },
+  "options": [{ "label": "Farmer", "value": "1", "kind": "choice" }],
+  "sources": [{ "scheme_name": "Pradhan Mantri Ujjwala Yojana (PMUY)", "state": "", "level": "Central" }],
+  "checklist": { "filename": "pmuy-checklist.txt", "text": "...", "sms": "..." }
 }
 ```
 
-Response: `{"recommended_schemes": ["PM-KISAN", "Ayushman Bharat", "Ujjwala Yojana"]}`
+- Typed text is answered from the scheme database in the user's language, and the schemes used are listed in `sources`.
+- Button values: `lang:<code>` picks a language, `cmd:restart|ask|list|lang` are menu actions, and numbers answer quiz questions.
+- `GET /health` is the liveness check.
+
+---
+
+# 🧭 How it answers in any Indian language
+
+1. All 850+ schemes are split into chunks and stored in ChromaDB using **BAAI/bge-m3**, a multilingual embedding model.
+2. A question in any supported language is embedded as typed (no translation step) and matched against the English scheme text. Keyword (BM25) search is fused in, which helps scheme names and acronyms.
+3. Gemini answers **only from the retrieved text**, in the user's language, and names the scheme. If the database does not contain the answer, it says so.
+4. Follow-up questions ("what documents do I need?") are first rewritten into a standalone query using the conversation so far.
+
+## Guided eligibility flow
+After choosing a language, six number-based questions (work, state, age, gender, income, family) produce a shortlist: rule-checked schemes from a curated list of 10 (PM-KISAN, PMFBY, KCC, Kisan Maandhan, PM-JAY, PMUY, PMAY-G, Sukanya Samriddhi, MGNREGA, e-Shram), then more schemes from the whole database for the user's state and central schemes. Selecting a scheme shows who can apply, the documents and how to apply, with a downloadable / SMS-copyable checklist. These guided steps use no LLM calls, so they are fast and use no API quota. Fixed texts are hand-written in English and Hindi; other languages are translated by Gemini once and cached in `backend/i18n/`.
 
 ---
 
@@ -347,7 +325,7 @@ http://localhost:5173
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `GOOGLE_API_KEY` | yes | Gemini API key |
-| `EMBEDDING_MODEL` | no | Defaults to `BAAI/bge-m3` (multilingual). Changing it requires rebuilding `vector_db` |
+| `EMBEDDING_MODEL` | no | Defaults to `BAAI/bge-m3` (multilingual, needs ~3 GB RAM). Changing it requires rebuilding `vector_db` |
 | `GEMINI_MODEL` | no | Defaults to `gemini-2.5-flash`. `gemini-2.5-flash-lite` has higher free-tier limits |
 | `ALLOWED_ORIGINS` | no | Extra comma-separated frontend origins for CORS |
 | `LOG_LEVEL` | no | Defaults to `INFO` |
@@ -361,40 +339,33 @@ VITE_API_URL=http://127.0.0.1:8000
 
 ---
 
-# 🚀 Deployment
+# 🚀 Deployment (demo setup)
+
+The backend needs about 3 GB of RAM because it loads the bge-m3 embedding model, so a very small free instance may not be enough.
 
 | Service | Platform |
 |----------|----------|
-| Frontend | Vercel (`frontend/vercel.json` handles SPA routing) |
-| Backend | Railway, using `backend/Dockerfile` and `backend/railway.json` |
+| Frontend | Vercel (`frontend/vercel.json` handles routing) |
+| Backend | Any Python host, e.g. Railway or Render (`backend/Procfile` is the start command) |
 | AI Model | Google Gemini |
 | Vector Database | ChromaDB (committed in `backend/vector_db`) |
 
-## Backend on Railway
-1. Create a service from this repo and set **Root Directory** to `backend`.
-2. Add variables: `GOOGLE_API_KEY` and `ALLOWED_ORIGINS=https://<your-frontend-domain>`.
-3. Deploy. Railway uses the Dockerfile and checks `GET /health`.
-4. The image needs roughly 3 GB of RAM because it loads the `bge-m3` embedding model (~2.2 GB download, baked into the image). For a smaller host, build with `EMBEDDING_MODEL=intfloat/multilingual-e5-base` and rebuild `vector_db` (e5 models also need `query:`/`passage:` prefixes, which this code does not add yet).
+**Backend:** set the root directory to `backend`, install `requirements.txt`, and add `GOOGLE_API_KEY` and `ALLOWED_ORIGINS=https://<your-frontend>`. Health check: `GET /health`.
 
-## Frontend on Vercel
-1. Import the repo with **Root Directory** `frontend`.
-2. Set `VITE_API_URL` to the Railway URL **in the Vercel project settings** (the local `.env` file is not used for the build).
-3. Redeploy after changing the variable.
+**Frontend:** set `VITE_API_URL` to the backend URL in the Vercel project settings, then redeploy.
 
-## Before going public
-- **Use a paid Gemini key.** The free tier allows only 5 requests per minute for the whole project, and one chat uses up to 2 requests. Real traffic will hit that immediately and users will see "very busy".
-- Review the entries in `backend/data/supplementary_schemes.py` against the official portals. Benefit amounts and rules change.
-- Keep the in-app notice that answers are informational and must be verified on official sites.
-- The rate limiter is in memory. If you run more than one backend instance, move it to Redis.
+**Good to know**
+- The free Gemini tier allows only 5 requests per minute for everyone combined. Under heavy use users will see "very busy, try again in a minute".
+- Scheme details are for information only. Always verify on the official portals. The five schemes in `backend/data/supplementary_schemes.py` were written by hand; check them before relying on them.
+- The rate limiter is in memory and resets when the server restarts.
 
 ---
 
-# 🧪 Quality
+# 🧪 Tests and data
 
-- `python -m pytest tests -c tests/pytest.ini -m "not slow"` runs the fast tests (used by CI in `.github/workflows/ci.yml`).
-- Drop `-m "not slow"` to also run retrieval tests (needs the embedding model and `vector_db`).
-- Search is hybrid: vector similarity (`BAAI/bge-m3`, multilingual) fused with BM25 keyword search, so exact scheme names and acronyms are found.
-- Data: `backend/data/cleaned_schemes.jsonl` (scraped) plus `backend/data/supplementary_schemes.py` (hand-curated central schemes). After changing either, run `python backend/services/build_vector_db.py` and commit the rebuilt `vector_db/` together with the code.
+- Run tests: `python -m pytest tests -c tests/pytest.ini -m "not slow"` (fast) or without `-m` to include retrieval tests (needs the embedding model and `vector_db`).
+- Search is hybrid: vector similarity fused with BM25 keyword search, so exact scheme names and acronyms are found.
+- Data: `backend/data/cleaned_schemes.jsonl` (scraped) plus `backend/data/supplementary_schemes.py` (hand-curated). After changing either, run `python backend/services/build_vector_db.py` and commit the rebuilt `vector_db/` with the code.
 
 ---
 
@@ -405,7 +376,8 @@ VITE_API_URL=http://127.0.0.1:8000
 - ✅ Conversation memory
 - ✅ Hybrid (vector + keyword) retrieval
 - ⬜ Streaming responses
-- ✅ Multilingual embedding model (BAAI/bge-m3)
+- ✅ Multilingual embeddings (BAAI/bge-m3)
+- ✅ Guided eligibility flow and document checklist
 - ⬜ Voice input
 - ⬜ WhatsApp integration
 - ⬜ More central and state schemes in the dataset

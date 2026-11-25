@@ -27,13 +27,6 @@ export default function Hero() {
           >
             Start Chat
           </Link>
-
-          <Link
-            to="/eligibility"
-            className="rounded-lg border border-teal-700 px-8 py-4 text-lg font-semibold text-teal-700 transition hover:bg-teal-50"
-          >
-            Check Eligibility
-          </Link>
         </div>
       </div>
     </section>

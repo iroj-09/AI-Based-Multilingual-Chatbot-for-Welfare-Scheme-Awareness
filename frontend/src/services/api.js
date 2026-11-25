@@ -4,18 +4,16 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-// history: [{ role: "user" | "assistant", content: string }]
-export async function sendMessage(query, history = []) {
-  const response = await api.post("/chat", {
-    question: query,
-    history,
-  });
+// First message of a conversation (language choice).
+export async function startChat() {
+  const response = await api.post("/chat/start");
 
-  return response.data; // { answer, sources }
+  return response.data; // { reply, state, options, sources, checklist }
 }
 
-export async function checkEligibility(user) {
-  const response = await api.post("/eligibility", user);
+// `state` is the conversation state returned by the previous reply.
+export async function sendMessage(message, state) {
+  const response = await api.post("/chat", { message, state });
 
   return response.data;
 }

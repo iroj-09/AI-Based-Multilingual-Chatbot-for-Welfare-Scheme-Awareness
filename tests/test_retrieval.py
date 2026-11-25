@@ -31,11 +31,6 @@ def test_supplementary_schemes_are_loaded():
         ("Ayushman Bharat health cover 5 lakh", "Ayushman Bharat"),
         ("Sukanya Samriddhi girl child savings", "Sukanya"),
         ("PMAY rural house construction assistance", "Awas Yojana"),
-        # Hindi (Devanagari) queries searched directly, no translation step
-        ("मुझे मुफ्त एलपीजी गैस कनेक्शन चाहिए", "Ujjwala"),
-        ("गरीब परिवार के लिए 5 लाख का स्वास्थ्य बीमा", "Ayushman Bharat"),
-        ("बेटी की पढ़ाई और शादी के लिए बचत योजना", "Sukanya"),
-        ("गांव में पक्का घर बनाने के लिए सहायता", "Awas Yojana"),
     ],
 )
 def test_hybrid_retrieval_finds_scheme(query, expected):
@@ -47,10 +42,37 @@ def test_hybrid_retrieval_finds_scheme(query, expected):
 
 
 @pytest.mark.slow
-def test_rewrite_skipped_only_for_plain_english_first_turn():
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("प्रधानमंत्री किसान सम्मान निधि के लिए आवेदन कैसे करें", "Kisan Samman"),  # Hindi, by name
+        # Several schemes pay farmers ~6000/year, so a description-only query
+        # may return any of them; any relevant income-support scheme is fine.
+        ("किसानों को हर साल 6000 रुपये की सहायता", "Nidhi"),  # Hindi, by description
+        ("मुझे मुफ्त एलपीजी गैस कनेक्शन चाहिए", "Ujjwala"),  # Hindi
+        ("இலவச எரிவாயு இணைப்பு ஏழைப் பெண்களுக்கு", "Ujjwala"),  # Tamil
+        ("ஐந்து லட்சம் வரை இலவச மருத்துவ சிகிச்சை", "Ayushman Bharat"),  # Tamil
+        ("মেয়ের পড়াশোনা ও বিয়ের জন্য সঞ্চয় প্রকল্প", "Sukanya"),  # Bengali
+        ("గ్రామీణ ప్రాంతంలో పక్కా ఇల్లు కట్టుకోవడానికి సహాయం", "Awas Yojana"),  # Telugu
+        ("ग्रामीण भागात १०० दिवस रोजगार हमी", "Employment Guarantee"),  # Marathi
+        ("gig workers ke liye registration card", "e-Shram"),  # Hinglish
+    ],
+)
+def test_query_in_indian_language_finds_scheme_directly(query, expected):
+    """Multilingual embeddings: no translation step. Needs bge-m3 and a built vector_db."""
+    from services.rag import retrieve
+
+    names = [d.metadata["scheme_name"] for d in retrieve(query)]
+    assert any(expected in n for n in names), names
+
+
+@pytest.mark.slow
+def test_only_follow_ups_are_rewritten():
     from services.rag import _needs_rewrite
 
+    # A first question in any language is searched as typed.
     assert not _needs_rewrite("What is PM-KISAN?", ())
-    assert _needs_rewrite("PMAY kya hai", ())  # Hinglish
-    assert _needs_rewrite("किसानों के लिए योजना", ())  # Hindi script
-    assert _needs_rewrite("what documents do I need?", (("user", "hi"),))  # follow-up
+    assert not _needs_rewrite("PMAY kya hai", ())
+    assert not _needs_rewrite("किसानों के लिए योजना", ())
+    # A follow-up depends on the conversation.
+    assert _needs_rewrite("what documents do I need?", (("user", "hi"),))

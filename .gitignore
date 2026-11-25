@@ -107,3 +107,6 @@ frontend/node_modules/
 
 # Vite
 frontend/dist/
+
+# Private project notes (interview prep), not for GitHub
+docs/

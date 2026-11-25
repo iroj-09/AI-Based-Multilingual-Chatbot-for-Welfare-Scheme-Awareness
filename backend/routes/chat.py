@@ -1,18 +1,16 @@
 import logging
 import time
 from collections import defaultdict, deque
-from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from config import (
-    MAX_HISTORY_TURNS,
     MAX_QUESTION_LENGTH,
     RATE_LIMIT_REQUESTS,
     RATE_LIMIT_WINDOW_SECONDS,
 )
-from services.rag import ask_rag
+from services import flow
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +51,18 @@ def _check_rate_limit(ip: str):
     window.append(now)
 
 
-class HistoryItem(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str = Field(max_length=4000)
-
-
 class ChatRequest(BaseModel):
-    question: str = Field(min_length=1, max_length=MAX_QUESTION_LENGTH)
-    history: list[HistoryItem] = Field(default_factory=list, max_length=20)
+    # Button values such as "lang:hi" or "cmd:restart" are short; typed text is capped.
+    message: str = Field(min_length=1, max_length=MAX_QUESTION_LENGTH)
+    # Conversation state returned by the previous reply. The server keeps no
+    # sessions, and re-validates this on every request.
+    state: dict | None = None
+
+
+@router.post("/chat/start")
+def chat_start():
+    """Opening message: language choice. No LLM call."""
+    return flow.start()
 
 
 @router.post("/chat")
@@ -69,11 +71,9 @@ def chat(req: ChatRequest, request: Request):
     _check_rate_limit(_client_ip(request))
 
     try:
-        # Only the last few turns are needed to resolve follow-ups.
-        history = [(h.role, h.content) for h in req.history[-MAX_HISTORY_TURNS:]]
-        result = ask_rag(req.question.strip(), history)
+        return flow.handle(req.message, req.state)
     except Exception as exc:
-        logger.exception("ask_rag failed")
+        logger.exception("chat failed")
 
         # Upstream LLM quota exhausted: tell the user to retry, not that it is broken.
         text = str(exc)
@@ -82,10 +82,7 @@ def chat(req: ChatRequest, request: Request):
                 status_code=429,
                 detail="The assistant is very busy right now. Please try again in a minute.",
             )
-
         raise HTTPException(
             status_code=503,
             detail="The assistant is temporarily unavailable. Please try again.",
         )
-
-    return result

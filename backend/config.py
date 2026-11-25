@@ -11,9 +11,10 @@ load_dotenv(BASE_DIR / ".env")
 VECTOR_DB_PATH = BASE_DIR / "vector_db"
 JSONL_PATH = BASE_DIR / "data" / "cleaned_schemes.jsonl"
 
-# Multilingual (100+ languages incl. Hindi and other Indian languages), 8192-token
-# context. Changing this requires rebuilding vector_db (see services/embeddings.py).
-# Lighter alternative: intfloat/multilingual-e5-base (needs "query:"/"passage:" prefixes).
+# Multilingual embeddings (100+ languages incl. Hindi, Tamil, Bengali, Telugu, Marathi...).
+# A question in any Indian language is embedded directly and matched against the
+# English scheme text, so no translation step is needed before searching.
+# Needs ~3 GB RAM. Changing this model requires rebuilding vector_db (see services/embeddings.py).
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "BAAI/bge-m3")
 # Override with e.g. GEMINI_MODEL=gemini-2.5-flash-lite for higher free-tier limits.
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")

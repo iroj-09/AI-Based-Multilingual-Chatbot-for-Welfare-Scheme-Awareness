@@ -7,7 +7,6 @@ from fastapi.middleware.gzip import GZipMiddleware
 from starlette.requests import Request
 
 from routes.chat import router as chat_router
-from routes.eligibility import router as eligibility_router
 
 logging.basicConfig(
     level=os.getenv("LOG_LEVEL", "INFO"),
@@ -60,7 +59,6 @@ async def security_headers(request: Request, call_next):
 
 
 app.include_router(chat_router)
-app.include_router(eligibility_router)
 
 
 @app.get("/")

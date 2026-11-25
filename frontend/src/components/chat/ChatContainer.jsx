@@ -1,42 +1,30 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { RotateCcw } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 
-import { sendMessage } from "../../services/api";
+import { sendMessage, startChat } from "../../services/api";
 import ChatMessage from "./ChatMessage";
 import ChatInput from "./ChatInput";
 import TypingIndicator from "./TypingIndicator";
 
-const STORAGE_KEY = "welfare-chat-history";
+const STORAGE_KEY = "welfare-chat-v2";
 
-const WELCOME = {
-  sender: "assistant",
-  message:
-    "👋 Hello! I am your AI Welfare Assistant. Ask me about any government welfare scheme.",
-};
-
-const STARTERS = [
-  "What is PM-KISAN?",
-  "Schemes for women entrepreneurs",
-  "Scholarships for students",
-  "किसानों के लिए कौन सी योजनाएं हैं?",
-];
-
-function loadMessages() {
+function loadSaved() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
-    if (Array.isArray(saved) && saved.length > 0) return saved;
+    if (saved && Array.isArray(saved.messages) && saved.messages.length > 0) {
+      return saved;
+    }
   } catch {
     // storage unavailable or corrupted: start fresh
   }
-  return [WELCOME];
+  return null;
 }
 
 function errorMessage(error) {
   const status = error?.response?.status;
 
   if (status === 429) {
-    // Server explains whether it is the per-user limit or the AI service being busy.
     return (
       error.response.data?.detail ||
       "Too many requests. Please wait a moment and try again."
@@ -51,82 +39,112 @@ function errorMessage(error) {
   return "Sorry, something went wrong. Please try again.";
 }
 
-export default function ChatContainer() {
-  const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState(loadMessages);
-  const bottomRef = useRef(null);
+// Turn a server reply into a chat message.
+function toMessage(data) {
+  return {
+    sender: "assistant",
+    message: data.reply || "",
+    options: data.options || [],
+    sources: data.sources || [],
+    checklist: data.checklist || null,
+  };
+}
 
+export default function ChatContainer() {
+  const saved = useRef(loadSaved()).current;
+
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState(saved?.messages ?? []);
+  const [chatState, setChatState] = useState(saved?.chatState ?? null);
+  const bottomRef = useRef(null);
+  const started = useRef(false);
+
+  // Persist the conversation (messages + server state) in this browser only.
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-50)));
+      localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ messages: messages.slice(-40), chatState })
+      );
     } catch {
       // ignore storage errors
     }
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, loading]);
+  }, [messages, chatState, loading]);
 
-  async function handleSend(userMessage) {
-    // Earlier real turns only (skip welcome text and error notices).
-    const history = messages
-      .filter((m) => m !== WELCOME && !m.isError && m.message !== WELCOME.message)
-      .map((m) => ({
-        role: m.sender === "user" ? "user" : "assistant",
-        content: m.message,
-      }));
-
-    setMessages((prev) => [...prev, { sender: "user", message: userMessage }]);
+  async function begin() {
     setLoading(true);
-
     try {
-      const response = await sendMessage(userMessage, history);
-
-      setMessages((prev) => [
-        ...prev,
-        {
-          sender: "assistant",
-          message: response.answer,
-          sources: response.sources,
-        },
-      ]);
+      const data = await startChat();
+      setMessages([toMessage(data)]);
+      setChatState(data.state);
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        { sender: "assistant", message: errorMessage(error), isError: true },
+      setMessages([
+        { sender: "assistant", message: errorMessage(error), isError: true, options: [] },
       ]);
     } finally {
       setLoading(false);
     }
   }
 
-  function clearChat() {
-    setMessages([WELCOME]);
+  // `value` is what is sent to the server; `shown` is what the user sees as their message.
+  async function handleSend(value, shown = value) {
+    setMessages((prev) => [
+      // Buttons only apply to the latest question; remove them once answered.
+      ...prev.map((m) => ({ ...m, options: [] })),
+      { sender: "user", message: shown },
+    ]);
+    setLoading(true);
+
+    try {
+      const data = await sendMessage(value, chatState);
+      setChatState(data.state);
+      setMessages((prev) => [...prev, toMessage(data)]);
+    } catch (error) {
+      setMessages((prev) => [
+        ...prev,
+        { sender: "assistant", message: errorMessage(error), isError: true, options: [] },
+      ]);
+    } finally {
+      setLoading(false);
+    }
   }
 
-  // Deep link: /chat?q=... sends that question once on first load.
+  // First visit: ask for the language. Deep link /chat?q=... sends that question once.
   const [searchParams, setSearchParams] = useSearchParams();
-  const autoSent = useRef(false);
-
   useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+
     const q = searchParams.get("q");
-    if (q && !autoSent.current) {
-      autoSent.current = true;
-      setSearchParams({}, { replace: true });
+    if (q) setSearchParams({}, { replace: true });
+
+    if (messages.length === 0) {
+      begin();
+    } else if (q) {
       handleSend(q.slice(0, 1000));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const showStarters = messages.length === 1;
+  function restart() {
+    setMessages([]);
+    setChatState(null);
+    begin();
+  }
+
+  const lastIndex = messages.length - 1;
+  const options = messages[lastIndex]?.options ?? [];
 
   return (
     <div className="mx-auto flex h-[80vh] max-w-5xl flex-col rounded-2xl bg-slate-100 shadow-lg">
       <div className="flex items-center justify-end border-b px-4 py-2">
         <button
-          onClick={clearChat}
-          disabled={loading || messages.length === 1}
+          onClick={restart}
+          disabled={loading}
           className="flex items-center gap-1 text-sm text-slate-500 hover:text-red-600 disabled:opacity-40"
         >
-          <Trash2 size={16} /> Clear chat
+          <RotateCcw size={16} /> Start over
         </button>
       </div>
 
@@ -137,19 +155,24 @@ export default function ChatContainer() {
             sender={msg.sender}
             message={msg.message}
             sources={msg.sources}
+            checklist={msg.checklist}
           />
         ))}
 
-        {showStarters && (
-          <div className="flex flex-wrap gap-2">
-            {STARTERS.map((s) => (
+        {/* Quick-reply buttons for the latest question */}
+        {!loading && options.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2 pl-14">
+            {options.map((o) => (
               <button
-                key={s}
-                onClick={() => handleSend(s)}
-                disabled={loading}
-                className="rounded-full border border-teal-600 bg-white px-4 py-2 text-sm text-teal-700 hover:bg-teal-50 disabled:opacity-50"
+                key={o.value}
+                onClick={() => handleSend(o.value, o.label)}
+                className={`rounded-full border px-4 py-2 text-sm hover:bg-teal-50 ${
+                  o.kind === "cmd"
+                    ? "border-slate-400 text-slate-600"
+                    : "border-teal-600 bg-white text-teal-700"
+                }`}
               >
-                {s}
+                {o.label}
               </button>
             ))}
           </div>
@@ -160,7 +183,7 @@ export default function ChatContainer() {
         <div ref={bottomRef} />
       </div>
 
-      <ChatInput onSend={handleSend} disabled={loading} />
+      <ChatInput onSend={(text) => handleSend(text)} disabled={loading || messages.length === 0} />
     </div>
   );
 }

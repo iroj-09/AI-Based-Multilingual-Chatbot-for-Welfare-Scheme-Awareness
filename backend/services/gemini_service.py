@@ -72,3 +72,32 @@ Latest query:
 def rewrite_query(query: str, history=()) -> str:
     """Translate to English and make standalone. Cached to save LLM calls."""
     return _rewrite(query, tuple(history))
+
+
+def translate_json(payload: dict, language_name: str) -> dict:
+    """Translate the string values of a flat/nested JSON object into a language.
+
+    Keys, numbers, currency symbols, URLs, placeholders such as {name} and
+    scheme names are kept unchanged.
+    """
+    import json
+    import re
+
+    prompt = f"""
+Translate the VALUES of this JSON into simple, spoken {language_name} that a
+person with low literacy can understand. Rules:
+- Keep every key exactly the same.
+- Keep numbers, the rupee sign, URLs, placeholders in curly braces such as
+  {{name}} and {{link}}, and official scheme or brand names (for example
+  PM-KISAN, Aadhaar, SMS, e-Shram) unchanged.
+- Use a respectful tone and a neutral form that does not depend on the
+  speaker's gender where the language allows it.
+- Return ONLY valid JSON, no explanations and no code fences.
+
+JSON:
+{json.dumps(payload, ensure_ascii=False)}
+"""
+
+    text = get_model().invoke(prompt).content.strip()
+    text = re.sub(r"^```(?:json)?\s*|\s*```$", "", text)
+    return json.loads(text)
