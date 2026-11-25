@@ -2,10 +2,9 @@ fastapi
 uvicorn
 langchain
 langchain-community
+langchain-core
 langchain-google-genai
 langchain-huggingface
 chromadb
 python-dotenv
-pandas
-scikit-learn
 sentence-transformers

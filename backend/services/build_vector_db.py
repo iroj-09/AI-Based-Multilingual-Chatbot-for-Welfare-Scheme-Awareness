@@ -12,8 +12,9 @@ from langchain_community.vectorstores import Chroma
 # CONFIG
 # =====================================================
 
-JSONL_PATH = Path("./data/cleaned_schemes.jsonl")
-VECTOR_DB_PATH = "./vector_db"
+BASE_DIR = Path(__file__).resolve().parent.parent
+JSONL_PATH = BASE_DIR / "data" / "cleaned_schemes.jsonl"
+VECTOR_DB_PATH = str(BASE_DIR / "vector_db")
 
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
@@ -115,7 +116,7 @@ def build_vector_database():
 
     print("\nCreating ChromaDB...")
 
-    vectordb = Chroma.from_documents(
+    Chroma.from_documents(
         documents=documents,
         embedding=embeddings,
         persist_directory=VECTOR_DB_PATH,

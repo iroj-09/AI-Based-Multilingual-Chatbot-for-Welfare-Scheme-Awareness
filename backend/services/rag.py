@@ -1,19 +1,14 @@
-from pathlib import Path
-
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import Chroma
 
+from config import EMBEDDING_MODEL, VECTOR_DB_PATH
 from .gemini_service import (
     generate_answer,
     normalize_query
 )
 
-
-
-VECTOR_DB_PATH = "./vector_db"
-
 embeddings = HuggingFaceEmbeddings(
-    model_name="sentence-transformers/all-MiniLM-L6-v2"
+    model_name=EMBEDDING_MODEL
 )
 
 db = Chroma(
@@ -72,7 +67,7 @@ available.
 7. Mention application process if
 available.
 
-8. Generate answers in user's language whis is used in the query.
+8. Generate answers in the user's language which is used in the query.
 The query may be:
 - English
 - Hindi
@@ -81,7 +76,7 @@ The query may be:
 
 if the query is in Hindi then only answer in Hindi.
 if the query is in Hinglish then only answer in Hinglish.
-if the query is in hindi and written in english aplphabet then only answer in Hindi but written in english alphabet.
+if the query is in Hindi and written in English alphabet then only answer in Hindi but written in English alphabet.
 
 query: {question}
 

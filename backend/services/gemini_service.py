@@ -1,31 +1,26 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_huggingface import HuggingFaceEndpoint, ChatHuggingFace
+import os
+from functools import lru_cache
+
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+from config import GEMINI_MODEL
 
 load_dotenv()
-import os
 
 model = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
-    google_api_key=os.getenv("GOOGLE_API_KEY")
+    model=GEMINI_MODEL,
+    google_api_key=os.getenv("GOOGLE_API_KEY"),
 )
 
-# llm = HuggingFaceEndpoint(
-#     repo_id = "meta-llama/Llama-3.1-8B-Instruct",
-#     task = "text-generation",
-#     huggingfacehub_api_token=os.getenv("HUGGINGFACEHUB_API_TOKEN")
-# )
 
-# model = ChatHuggingFace(
-#     llm=llm)
+def generate_answer(prompt: str) -> str:
+    return model.invoke(prompt).content
 
-def generate_answer(prompt):
 
-    response = model.invoke(prompt)
-
-    return response.content
-
-def normalize_query(query: str):
+@lru_cache(maxsize=512)
+def normalize_query(query: str) -> str:
+    """Translate/normalize a query to English. Cached to save LLM calls."""
 
     prompt = f"""
 You are a language normalization assistant.
@@ -44,6 +39,4 @@ Query:
 {query}
 """
 
-    response = model.invoke(prompt)
-
-    return response.content.strip()
+    return model.invoke(prompt).content.strip()
