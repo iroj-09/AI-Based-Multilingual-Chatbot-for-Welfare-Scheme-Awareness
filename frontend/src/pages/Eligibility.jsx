@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 import Navbar from "../components/layout/Navbar";
 import { checkEligibility } from "../services/api";
@@ -119,13 +120,27 @@ export default function Eligibility() {
           {schemes && (
             <div className="mt-6">
               {schemes.length === 0 ? (
-                <p>No matching schemes found. Try asking the chatbot.</p>
+                <p>
+                  No matching schemes found.{" "}
+                  <Link to="/chat" className="font-semibold text-teal-700 hover:underline">
+                    Try asking the chatbot.
+                  </Link>
+                </p>
               ) : (
                 <>
                   <h2 className="mb-2 font-semibold">You may be eligible for:</h2>
-                  <ul className="list-disc pl-6">
+                  <ul className="space-y-3">
                     {schemes.map((s) => (
-                      <li key={s}>{s}</li>
+                      <li key={s.name} className="rounded-lg border p-3">
+                        <p className="font-medium">{s.name}</p>
+                        <p className="text-sm text-slate-600">{s.reason}</p>
+                        <Link
+                          to={`/chat?q=${encodeURIComponent(s.ask)}`}
+                          className="mt-1 inline-block text-sm font-semibold text-teal-700 hover:underline"
+                        >
+                          Ask the chatbot about this →
+                        </Link>
+                      </li>
                     ))}
                   </ul>
                 </>

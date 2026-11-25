@@ -1,135 +1,64 @@
-import json
-import html
-import re
+"""
+Build the Chroma vector DB from the scheme data.
+
+Run from anywhere:  python backend/services/build_vector_db.py
+"""
+
+import gc
+import shutil
+import sys
 from pathlib import Path
 
-from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_community.vectorstores import Chroma
-
-
-# =====================================================
-# CONFIG
-# =====================================================
-
+# Allow running as a plain script as well as a module.
 BASE_DIR = Path(__file__).resolve().parent.parent
-JSONL_PATH = BASE_DIR / "data" / "cleaned_schemes.jsonl"
-VECTOR_DB_PATH = str(BASE_DIR / "vector_db")
+sys.path.insert(0, str(BASE_DIR))
 
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+from langchain_chroma import Chroma  # noqa: E402
 
+from config import EMBEDDING_MODEL, VECTOR_DB_PATH  # noqa: E402
+from services.documents import load_documents  # noqa: E402
+from services.embeddings import get_embeddings, write_marker  # noqa: E402
 
-# =====================================================
-# TEXT CLEANER
-# =====================================================
-
-def clean_text(text: str) -> str:
-    """
-    Remove HTML tags, decode entities,
-    normalize whitespace.
-    """
-
-    if not text:
-        return ""
-
-    text = html.unescape(text)
-
-    text = re.sub(r"<[^>]+>", " ", text)
-
-    text = re.sub(r"\s+", " ", text)
-
-    return text.strip()
-
-
-# =====================================================
-# LOAD JSONL
-# =====================================================
-
-def load_documents():
-
-    documents = []
-
-    with open(JSONL_PATH, "r", encoding="utf-8") as file:
-
-        for line_number, line in enumerate(file, start=1):
-
-            try:
-
-                item = json.loads(line)
-
-                search_text = clean_text(
-                    item.get("search_text", "")
-                )
-
-                if not search_text:
-                    continue
-
-                document = Document(
-                    page_content=search_text,
-                    metadata={
-                        "scheme_id": item.get("scheme_id", ""),
-                        "scheme_name": item.get("scheme_name", ""),
-                        "state": item.get("state", ""),
-                        "level": item.get("level", ""),
-                        "short_title": item.get("short_title", ""),
-                        "categories": ",".join(
-                            item.get("categories", [])
-                        )
-                        if isinstance(
-                            item.get("categories", []),
-                            list,
-                        )
-                        else "",
-                    },
-                )
-
-                documents.append(document)
-
-            except Exception as e:
-
-                print(
-                    f"Error at line {line_number}: {e}"
-                )
-
-    return documents
-
-
-# =====================================================
-# BUILD VECTOR DB
-# =====================================================
 
 def build_vector_database():
 
     print("\nLoading documents...")
-
     documents = load_documents()
+    print(f"Created {len(documents)} chunks")
 
-    print(
-        f"Loaded {len(documents)} scheme documents"
-    )
+    print(f"\nLoading embedding model {EMBEDDING_MODEL}...")
+    embeddings = get_embeddings()
 
-    print("\nLoading embedding model...")
-
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL
-    )
+    # Build into a temp dir, then swap, so a failed build never
+    # destroys the working database.
+    final_path = Path(VECTOR_DB_PATH)
+    tmp_path = final_path.with_name("vector_db_new")
+    if tmp_path.exists():
+        shutil.rmtree(tmp_path)
 
     print("\nCreating ChromaDB...")
-
-    Chroma.from_documents(
+    db = Chroma.from_documents(
         documents=documents,
         embedding=embeddings,
-        persist_directory=VECTOR_DB_PATH,
+        persist_directory=str(tmp_path),
     )
 
-   
-    
-# =====================================================
-# MAIN
-# =====================================================
+    # Release Chroma's file handles (needed on Windows before renaming).
+    try:
+        db._client._system.stop()
+    except Exception:
+        pass
+    del db
+    gc.collect()
+
+    write_marker(tmp_path)
+
+    if final_path.exists():
+        shutil.rmtree(final_path)
+    tmp_path.rename(final_path)
+
+    print("\nDone.")
+
 
 if __name__ == "__main__":
-
     build_vector_database()
-
-    

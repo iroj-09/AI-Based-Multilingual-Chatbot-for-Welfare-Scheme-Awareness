@@ -1,7 +1,7 @@
 import { Bot, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
-export default function ChatMessage({ sender, message }) {
+export default function ChatMessage({ sender, message, sources }) {
 
   const isUser = sender === "user";
 
@@ -50,6 +50,23 @@ export default function ChatMessage({ sender, message }) {
                 {message}
             </ReactMarkdown>
           </div>
+
+          {sources && sources.length > 0 && (
+            <div className="mt-3 border-t pt-2 text-xs text-gray-500">
+              <p className="mb-1 font-semibold">Related schemes</p>
+              <ul className="list-disc pl-4">
+                {sources.map((s) => (
+                  <li key={`${s.scheme_name}-${s.state}`}>
+                    {s.scheme_name}
+                    {s.state ? ` (${s.state})` : ""}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 italic">
+                Please verify details on the official scheme website before applying.
+              </p>
+            </div>
+          )}
 
         </div>
 

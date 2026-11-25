@@ -4,12 +4,14 @@ const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
 
-export async function sendMessage(query) {
+// history: [{ role: "user" | "assistant", content: string }]
+export async function sendMessage(query, history = []) {
   const response = await api.post("/chat", {
     question: query,
+    history,
   });
 
-  return response.data;
+  return response.data; // { answer, sources }
 }
 
 export async function checkEligibility(user) {

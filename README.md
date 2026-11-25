@@ -233,19 +233,37 @@ POST /chat
 
 ```json
 {
-    "question": "Tell me about PM-KISAN"
+    "question": "What documents do I need?",
+    "history": [
+        {"role": "user", "content": "Tell me about PM-KISAN"},
+        {"role": "assistant", "content": "PM-KISAN is a Central Sector Scheme..."}
+    ]
 }
 ```
+
+`history` is optional; it lets the bot resolve follow-up questions.
 
 ### Response
 
 ```json
 {
-    "answer": "PM-KISAN is a Central Sector Scheme..."
+    "answer": "PM-KISAN is a Central Sector Scheme...",
+    "sources": [{"scheme_name": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)", "state": "", "level": "Central"}]
 }
 ```
 
 `/chat` is rate limited per IP (see `backend/config.py`).
+
+### Rebuilding the vector DB and running tests
+
+```bash
+cd backend
+python services/build_vector_db.py        # re-chunks and re-embeds data/cleaned_schemes.jsonl
+pip install -r requirements-dev.txt
+cd .. && python -m pytest tests -c tests/pytest.ini
+```
+
+Set `ALLOWED_ORIGINS` (comma-separated) to allow extra frontend origins without editing code.
 
 ## Eligibility Endpoint
 
@@ -324,24 +342,21 @@ http://localhost:5173
 
 # 🔑 Environment Variables
 
-## Backend
+## Backend (`backend/.env`, see `backend/.env.example`)
 
-Create a `.env` file inside the backend directory.
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `GOOGLE_API_KEY` | yes | Gemini API key |
+| `EMBEDDING_MODEL` | no | Defaults to `BAAI/bge-m3` (multilingual). Changing it requires rebuilding `vector_db` |
+| `GEMINI_MODEL` | no | Defaults to `gemini-2.5-flash`. `gemini-2.5-flash-lite` has higher free-tier limits |
+| `ALLOWED_ORIGINS` | no | Extra comma-separated frontend origins for CORS |
+| `LOG_LEVEL` | no | Defaults to `INFO` |
+| `ENABLE_DOCS` | no | Set `true` to expose `/docs` (off by default) |
 
-```env
-GOOGLE_API_KEY=YOUR_GEMINI_API_KEY
-```
-
-## Frontend
+## Frontend (`frontend/.env`, see `frontend/.env.example`)
 
 ```env
 VITE_API_URL=http://127.0.0.1:8000
-```
-
-For production:
-
-```env
-VITE_API_URL=https://your-railway-backend.up.railway.app
 ```
 
 ---
@@ -350,28 +365,52 @@ VITE_API_URL=https://your-railway-backend.up.railway.app
 
 | Service | Platform |
 |----------|----------|
-| Frontend | Vercel |
-| Backend | Railway |
+| Frontend | Vercel (`frontend/vercel.json` handles SPA routing) |
+| Backend | Railway, using `backend/Dockerfile` and `backend/railway.json` |
 | AI Model | Google Gemini |
-| Vector Database | ChromaDB |
+| Vector Database | ChromaDB (committed in `backend/vector_db`) |
+
+## Backend on Railway
+1. Create a service from this repo and set **Root Directory** to `backend`.
+2. Add variables: `GOOGLE_API_KEY` and `ALLOWED_ORIGINS=https://<your-frontend-domain>`.
+3. Deploy. Railway uses the Dockerfile and checks `GET /health`.
+4. The image needs roughly 3 GB of RAM because it loads the `bge-m3` embedding model (~2.2 GB download, baked into the image). For a smaller host, build with `EMBEDDING_MODEL=intfloat/multilingual-e5-base` and rebuild `vector_db` (e5 models also need `query:`/`passage:` prefixes, which this code does not add yet).
+
+## Frontend on Vercel
+1. Import the repo with **Root Directory** `frontend`.
+2. Set `VITE_API_URL` to the Railway URL **in the Vercel project settings** (the local `.env` file is not used for the build).
+3. Redeploy after changing the variable.
+
+## Before going public
+- **Use a paid Gemini key.** The free tier allows only 5 requests per minute for the whole project, and one chat uses up to 2 requests. Real traffic will hit that immediately and users will see "very busy".
+- Review the entries in `backend/data/supplementary_schemes.py` against the official portals. Benefit amounts and rules change.
+- Keep the in-app notice that answers are informational and must be verified on official sites.
+- The rate limiter is in memory. If you run more than one backend instance, move it to Redis.
 
 ---
 
+# 🧪 Quality
 
-# 🎯 Future Improvements
-
-- ✅ Eligibility Checker
-- ✅ Source Citations
-- ✅ Conversation Memory
-- ✅ Streaming AI Responses
-- ✅ Voice Support
-- ✅ WhatsApp Integration
-- ✅ Authentication
-- ✅ Chat History
-- ✅ Advanced Multilingual Support
+- `python -m pytest tests -c tests/pytest.ini -m "not slow"` runs the fast tests (used by CI in `.github/workflows/ci.yml`).
+- Drop `-m "not slow"` to also run retrieval tests (needs the embedding model and `vector_db`).
+- Search is hybrid: vector similarity (`BAAI/bge-m3`, multilingual) fused with BM25 keyword search, so exact scheme names and acronyms are found.
+- Data: `backend/data/cleaned_schemes.jsonl` (scraped) plus `backend/data/supplementary_schemes.py` (hand-curated central schemes). After changing either, run `python backend/services/build_vector_db.py` and commit the rebuilt `vector_db/` together with the code.
 
 ---
 
+# 🎯 Roadmap
+
+- ✅ Eligibility checker linked to the chatbot
+- ✅ Source citations
+- ✅ Conversation memory
+- ✅ Hybrid (vector + keyword) retrieval
+- ⬜ Streaming responses
+- ✅ Multilingual embedding model (BAAI/bge-m3)
+- ⬜ Voice input
+- ⬜ WhatsApp integration
+- ⬜ More central and state schemes in the dataset
+
+---
 
 # 👨‍💻 Author
 
